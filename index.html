@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OMSU Mamburao Campus Portal — Official Announcements</title>
+    <meta name="description" content="Centralized Occidental Mindoro State University — Mamburao Campus announcement hub with Admin & Student Portal accounts, real-time updates, and automated email notifications." />
+    <meta property="og:title" content="OMSU Mamburao Campus Portal — Official Announcements" />
+    <meta property="og:description" content="Centralized Occidental Mindoro State University — Mamburao Campus announcement hub with Admin & Student Portal accounts, real-time updates, and automated email notifications." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body style="margin:0;background:#0F254A;color:#F8FAFC;font-family:'Plus Jakarta Sans',system-ui,sans-serif;">
+    <div id="root">
+      <div data-omsu-loader="true" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0F254A;">
+        <div style="text-align:center;max-width:360px;">
+          <div style="font-size:16px;font-weight:700;letter-spacing:-0.01em;color:#FFFFFF;">OMSU Mamburao Campus Portal</div>
+          <div id="omsu-boot-status" style="margin-top:6px;font-size:12px;color:#BFDBFE;">Loading official portal...</div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script data-root-static-fallback>
+      (function () {
+        var isViteDev = !!document.querySelector('script[src*="@vite/client"]');
+        var hasRawTsxEntry = !!document.querySelector('script[src="/src/main.tsx"]');
+        if (isViteDev || !hasRawTsxEntry) return;
+
+        var p = window.location.pathname || '/';
+        if (p.endsWith('/index.html')) {
+          p = p.slice(0, -'index.html'.length);
+        } else if (!p.endsWith('/')) {
+          p = p + '/';
+        }
+        var baseOrigin = window.location.origin + p;
+
+        function showBootError(msg) {
+          var root = document.getElementById('root');
+          if (!root || !root.querySelector('[data-omsu-loader]')) return;
+          root.innerHTML =
+            '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0F254A;">' +
+            '<div style="max-width:440px;width:100%;background:#FFFFFF;color:#0F172A;border-radius:16px;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,0.35);">' +
+            '<div style="font-size:16px;font-weight:700;color:#1E3A8A;">OMSU Mamburao Campus Portal</div>' +
+            '<p style="margin:10px 0 0;font-size:13px;line-height:1.5;color:#475569;">' +
+            String(msg || 'Unable to load portal scripts. Please check your internet connection and refresh.') +
+            '</p>' +
+            '<button type="button" onclick="window.location.reload()" style="margin-top:16px;width:100%;padding:10px 14px;border:none;border-radius:8px;background:#1E3A8A;color:#FFFFFF;font-size:13px;font-weight:600;cursor:pointer;">Reload Portal</button>' +
+            '</div></div>';
+        }
+
+        window.__OMSU_BOOT_ERROR__ = showBootError;
+
+        var watchdog = window.setTimeout(function () {
+          showBootError('Portal startup timed out while loading modules. Please verify your deployment files and internet connection, then reload.');
+        }, 18000);
+
+        function clearWatchdogOnMount() {
+          var root = document.getElementById('root');
+          if (root && !root.querySelector('[data-omsu-loader]')) {
+            window.clearTimeout(watchdog);
+            return;
+          }
+          window.setTimeout(clearWatchdogOnMount, 250);
+        }
+        clearWatchdogOnMount();
+
+        function loadScript(src) {
+          return new Promise(function (resolve, reject) {
+            var el = document.createElement('script');
+            el.src = src;
+            el.onload = function () { resolve(); };
+            el.onerror = function () { reject(new Error('Failed to load ' + src)); };
+            document.head.appendChild(el);
+          });
+        }
+
+        var EXTERNAL_MAP = {
+          'react': 'https://esm.sh/react@19.0.1',
+          'react/jsx-runtime': 'https://esm.sh/react@19.0.1/jsx-runtime',
+          'react-dom': 'https://esm.sh/react-dom@19.0.1?deps=react@19.0.1',
+          'react-dom/client': 'https://esm.sh/react-dom@19.0.1/client?deps=react@19.0.1',
+          'lucide-react': 'https://esm.sh/lucide-react@0.546.0?deps=react@19.0.1'
+        };
+
+        async function bootFromSource() {
+          try {
+            var statusEl = document.getElementById('omsu-boot-status');
+            if (statusEl) statusEl.textContent = 'Preparing OMSU Mamburao modules...';
+
+            await loadScript('https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4').catch(function () {});
+
+            var cssRes = await fetch(baseOrigin + 'src/index.css');
+            if (cssRes.ok) {
+              var cssText = await cssRes.text();
+              cssText = cssText.replace(/@import\s+["']tailwindcss["'];?/g, '');
+              var styleEl = document.createElement('style');
+              styleEl.setAttribute('type', 'text/tailwindcss');
+              styleEl.textContent = cssText;
+              document.head.appendChild(styleEl);
+            }
+
+            var sucrase = await import('https://esm.sh/sucrase@3.35.0');
+            var transform = sucrase.transform;
+            var moduleCache = new Map();
+
+            async function probeUrl(spec, parentUrl) {
+              var raw = new URL(spec, parentUrl).href;
+              if (/\.(tsx|ts|jsx|js|css|jpg|jpeg|png|webp|svg)(\?.*)?$/i.test(raw)) {
+                return raw;
+              }
+              var candidates = [raw + '.tsx', raw + '.ts', raw + '.js', raw + '/index.tsx', raw + '/index.ts'];
+              var checks = await Promise.all(
+                candidates.map(function (c) {
+                  return fetch(c, { method: 'HEAD' })
+                    .then(function (r) { return r.ok ? c : null; })
+                    .catch(function () { return null; });
+                })
+              );
+              for (var i = 0; i < checks.length; i++) {
+                if (checks[i]) return checks[i];
+              }
+              return raw + '.tsx';
+            }
+
+            function compileModule(absUrl) {
+              if (moduleCache.has(absUrl)) return moduleCache.get(absUrl);
+              var promise = (async function () {
+                if (/\.(jpg|jpeg|png|webp|gif|svg)(\?.*)?$/i.test(absUrl)) {
+                  var assetCode = 'export default ' + JSON.stringify(absUrl) + ';';
+                  return URL.createObjectURL(new Blob([assetCode], { type: 'text/javascript' }));
+                }
+                if (/\.css(\?.*)?$/i.test(absUrl)) {
+                  return URL.createObjectURL(new Blob(['export default {};'], { type: 'text/javascript' }));
+                }
+
+                var res = await fetch(absUrl);
+                if (!res.ok) {
+                  throw new Error('Missing file ' + absUrl + ' (' + res.status + ')');
+                }
+                var source = await res.text();
+                var out = transform(source, {
+                  transforms: ['typescript', 'jsx'],
+                  jsxRuntime: 'automatic',
+                  production: true,
+                  disableESTransforms: true
+                }).code;
+
+                var specs = [];
+                var importRe = /(^|[;\n}])([ \t]*import\s+(?:[\w*{},\s$]+?\s+from\s+)?)(['"])([^'"]+)\3/g;
+                var exportRe = /(^|[;\n}])([ \t]*export\s+(?:\*(?:\s+as\s+[\w$]+)?|\{[^}]*\})\s+from\s+)(['"])([^'"]+)\3/g;
+
+                var m;
+                while ((m = importRe.exec(out)) !== null) specs.push(m[4]);
+                while ((m = exportRe.exec(out)) !== null) specs.push(m[4]);
+
+                var resolvedMap = new Map();
+                await Promise.all(
+                  Array.from(new Set(specs)).map(async function (spec) {
+                    if (EXTERNAL_MAP[spec]) {
+                      resolvedMap.set(spec, EXTERNAL_MAP[spec]);
+                    } else if (spec.startsWith('./') || spec.startsWith('../')) {
+                      var targetAbs = await probeUrl(spec, absUrl);
+                      var targetBlob = await compileModule(targetAbs);
+                      resolvedMap.set(spec, targetBlob);
+                    }
+                  })
+                );
+
+                var replaceSpec = function (_, prefix, head, quote, spec) {
+                  var next = resolvedMap.get(spec) || spec;
+                  return prefix + head + quote + next + quote;
+                };
+
+                out = out.replace(importRe, replaceSpec).replace(exportRe, replaceSpec);
+                return URL.createObjectURL(new Blob([out], { type: 'text/javascript' }));
+              })();
+
+              moduleCache.set(absUrl, promise);
+              return promise;
+            }
+
+            var entryBlob = await compileModule(baseOrigin + 'src/main.tsx');
+            await import(entryBlob);
+          } catch (err) {
+            showBootError('Portal initialization failed: ' + (err && err.message ? err.message : String(err)));
+          }
+        }
+
+        var bootScript = document.createElement('script');
+        bootScript.src = p + 'assets/boot.js';
+        bootScript.defer = true;
+        bootScript.onerror = function () {
+          bootFromSource();
+        };
+        document.head.appendChild(bootScript);
+      })();
+    </script>
+  </body>
+</html>
+
